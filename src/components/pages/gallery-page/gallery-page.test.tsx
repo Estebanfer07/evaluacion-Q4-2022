@@ -1,10 +1,18 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  getByText,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { AxiosResponse } from "axios";
 import { Provider } from "react-redux";
 import * as service from "../../../services/gif-service/gif-service";
 import { store } from "../../../store/store";
 import { GalleryPage } from "./gallery-page";
 import * as actions from "../../../store/actions/actions";
+import { Gif } from "../../../utils/interfaces/gif.interface";
 
 describe("GalleryPage", () => {
   const WrappedComponent = () => {
@@ -15,11 +23,16 @@ describe("GalleryPage", () => {
     );
   };
 
-  beforeEach(() => {
-    jest.useFakeTimers();
+  let mocketGetGifs: jest.SpyInstance<Promise<AxiosResponse<Gif[], any>>, []>;
+
+  beforeAll(() => {
+    mocketGetGifs = jest.spyOn(service, "getGifs");
   });
 
   it("should render Loading Gallery page", () => {
+    mocketGetGifs.mockImplementation(() =>
+      Promise.resolve({ data: [] } as AxiosResponse)
+    );
     render(<WrappedComponent />);
 
     const title = screen.queryByText("Loading", { exact: false });
@@ -27,15 +40,13 @@ describe("GalleryPage", () => {
   });
 
   it("should render empty Gallery page", async () => {
-    jest
-      .spyOn(service, "getGifs")
-      .mockResolvedValue({ data: [] } as AxiosResponse);
+    mocketGetGifs.mockImplementation(() =>
+      Promise.resolve({ data: [] } as AxiosResponse)
+    );
 
-    await render(<WrappedComponent />);
+    render(<WrappedComponent />);
 
-    await act(() => {
-      jest.runAllTimers();
-    });
+    await act(async () => {});
 
     const title = screen.queryByText("No posee gifs");
 
@@ -43,15 +54,14 @@ describe("GalleryPage", () => {
   });
 
   it("should render Gallery page with gifs", async () => {
-    jest.spyOn(service, "getGifs").mockResolvedValue({
-      data: [{ id: 1, url: "http:...", author_id: 17 }],
-    } as AxiosResponse);
+    mocketGetGifs.mockImplementation(() =>
+      Promise.resolve({
+        data: [{ id: 1, url: "http:...", author_id: 17 }],
+      } as AxiosResponse)
+    );
 
-    await render(<WrappedComponent />);
-
-    await act(() => {
-      jest.runAllTimers();
-    });
+    render(<WrappedComponent />);
+    await act(async () => {});
 
     const items = screen.queryAllByAltText("http:...");
 
@@ -59,15 +69,13 @@ describe("GalleryPage", () => {
   });
 
   it("should not call addGif action if form is not valid", async () => {
-    jest.spyOn(service, "getGifs").mockResolvedValue({
-      data: [],
-    } as AxiosResponse);
+    mocketGetGifs.mockImplementation(() =>
+      Promise.resolve({ data: [] } as AxiosResponse)
+    );
     const addGifAction = jest.spyOn(actions, "startAddingGif");
 
-    await render(<WrappedComponent />);
-    await act(() => {
-      jest.runAllTimers();
-    });
+    render(<WrappedComponent />);
+    await act(async () => {});
 
     const input = screen.queryByPlaceholderText("GIF URL");
     expect(input).not.toBeNull();
@@ -79,29 +87,33 @@ describe("GalleryPage", () => {
     expect(addGifAction).not.toHaveBeenCalled();
   });
 
-  //   it("should call addGif action if form is valid", async () => {
-  //     jest.spyOn(service, "getGifs").mockResolvedValue({
-  //       data: [],
-  //     } as AxiosResponse);
-  //     const addGifAction = jest.spyOn(actions, "startAddingGif");
+  it("should call addGif action if form is valid", async () => {
+    jest.useFakeTimers();
+    mocketGetGifs.mockResolvedValue({
+      data: [],
+    } as AxiosResponse);
+    const addGifAction = jest
+      .spyOn(actions, "startAddingGif")
+      .mockImplementation(() => jest.fn());
 
-  //     const { debug } = await render(<WrappedComponent />);
-  //     await act(() => {
-  //       jest.runAllTimers();
-  //     });
+    render(<WrappedComponent />);
+    await act(async () => {});
 
-  //     const input = screen.queryByPlaceholderText("GIF URL");
-  //     expect(input).not.toBeNull();
-  //     fireEvent.change(input!, { target: { value: "http://wwww.google.com" } });
+    const input = screen.getByPlaceholderText<HTMLInputElement>("GIF URL");
+    expect(input).not.toBeNull();
 
-  //     await act(() => {
-  //       jest.runAllTimers();
-  //     });
+    await act(async () => {
+      fireEvent.change(input!, {
+        // target: { value: "http://wwww.google.com" },
+        target: { value: "a" },
+      });
+      input.value = "http://wwww.google.com";
+    });
 
-  //     const addBtn = screen.queryByText("Agregar");
-  //     expect(addBtn).not.toBeNull();
+    const addBtn = screen.queryByText("Agregar");
+    expect(addBtn).not.toBeNull();
 
-  //     fireEvent.click(addBtn!);
-  //     expect(addGifAction).toHaveBeenCalled();
-  //   });
+    fireEvent.click(addBtn!);
+    expect(addGifAction).toHaveBeenCalled();
+  });
 });

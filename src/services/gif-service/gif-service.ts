@@ -8,7 +8,6 @@ export const gifService = axios.create({
 
 export const fullfilledReq = (config: AxiosRequestConfig<any>) => {
   if (config.method !== "get") {
-    console.log(config.data);
     config.data = {
       ...config.data,
       author_id: process.env.REACT_APP_AUTHOR_ID,

@@ -40,8 +40,6 @@ export const useForm = (initState: UseFormProps): UseFormReturn => {
   };
 
   const onChange = ({ target }: ChangeEvent<HTMLInputElement>) => {
-    // console.log("ENTRA A ON CHANGE");
-    // console.log(target.value);
     setFormData((prevData) => ({
       ...prevData,
       [target.name]: target.value,
